@@ -1,0 +1,105 @@
+// --- 設定區 (請依照你的試算表修改這裡) ---
+const SHEET_NAME = "捷元Meta廣告名單";  // 你的分頁名稱
+const COL_NAME = 13;           // 「姓名」在第幾欄 (A=1, B=2...)
+const COL_EMAIL = 15;          // 「Email」在第幾欄
+const COL_STATUS = 18;         // 「寄信狀態」在第幾欄 (請務必確認!)
+const EMAIL_SUBJECT = "【報名成功通知】下一代創作者的生存法則_實體課程講座"; // 信件標題
+const SENDER_NAME = "T客邦課程講座小組"; // 寄件者名稱
+
+// 如果要用別名寄信，請在下面填入 email (必須是 Gmail 裡已驗證的別名)
+// 如果不需要，請保持空字串 ""
+const SENDER_EMAIL = "techbang1@gmail.com"; // 例如 "service@company.com"
+
+function sendEmailToNewLeads() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  
+  if (!sheet) {
+    console.log("找不到工作表：" + SHEET_NAME);
+    return;
+  }
+
+  var lastRow = sheet.getLastRow();
+  
+  // 如果沒有資料就結束
+  if (lastRow < 2) return; 
+
+  // 讀取整張表的資料
+  var dataRange = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn());
+  var data = dataRange.getValues();
+  
+  // 逐筆檢查
+  for (var i = 0; i < data.length; i++) {
+    var row = data[i];
+    
+    // 取得欄位資料
+    var name = row[COL_NAME - 1];
+    var email = row[COL_EMAIL - 1];
+    var status = row[COL_STATUS - 1];
+    
+    // 邏輯：如果有 Email + 且狀態欄是空的 -> 寄信
+    if (email != "" && status == "") {
+      
+      try {
+        // 設定寄信參數
+        var emailOptions = {
+          name: SENDER_NAME,
+          htmlBody: `
+            <div style="font-family: Arial, 'Microsoft JhengHei', sans-serif; line-height: 1.6; color: #333;">
+                <h3>親愛的 ${name} 網友您好,</h3>
+                <p>您已成功報名「下一代創作者的生存法則」實體講座活動，詳細活動資訊如下：</p>
+                
+                <ul style="padding-left: 20px;">
+                    <li style="margin-bottom: 8px;">
+                        <strong>課程時間：</strong>2026/02/11（三）（18:30 開始報到）
+                    </li>
+                    <li style="margin-bottom: 8px;">
+                        <strong>課程地點：</strong>Milk Bar by BKA
+                        （<a style="color: #1155cc; text-decoration: underline;" href="https://www.google.com/maps/search/?api=1&query=Milk+Bar+by+BKA" target="_blank">台北市松山區南京東路三段 269 巷 6-1 號</a>）
+                    </li>
+                    <li style="margin-bottom: 8px;"><strong>課程流程：</strong></li>
+                </ul>
+
+                <ul style="list-style-type: none; padding-left: 20px; margin-top: 0;">
+                    <li style="margin-bottom: 5px; padding-left: 10px; border-left: 3px solid #eee;">18:30-19:00丨活動報到</li>
+                    <li style="margin-bottom: 5px; padding-left: 10px; border-left: 3px solid #eee;">19:00-19:15丨主題焦點：創作者的可靠後盾</li>
+                    <li style="margin-bottom: 5px; padding-left: 10px; border-left: 3px solid #eee;">19:15-20:00丨主題焦點：下一代創作者的生存法則</li>
+                    <li style="margin-bottom: 5px; padding-left: 10px; border-left: 3px solid #eee;">20:00-20:10丨中場休息</li>
+                    <li style="margin-bottom: 5px; padding-left: 10px; border-left: 3px solid #eee;">20:10-21:00丨主題焦點：下一代創作者的生存法則</li>
+                    <li style="margin-bottom: 5px; padding-left: 10px; border-left: 3px solid #eee;">21:00-21:10丨現場 QA 交流</li>
+                </ul>
+
+                <p style="margin-top: 20px;">
+                    <img src="https://cdn1.techbang.com/system/images/770287/original/0a426e5fa0a16908fc50824021e510b4.jpg?1769495540" 
+                         alt="活動示意圖" 
+                         style="width: 100%; max-width: 500px; height: auto; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                </p>
+
+                <p style="background-color: #fff3cd; padding: 15px; border-radius: 5px; color: #856404;">
+                    ⚠️ 此為系統自動發送信件，請勿回覆此信，如有問題請發信至techbang1@gmail.com。
+                </p>
+
+                <br>
+                <p>T客邦課程講座活動小組 敬上</p>
+            </div>
+          `
+        };
+
+        // 如果有設定 SENDER_EMAIL，就加入參數
+        if (SENDER_EMAIL !== "") {
+          emailOptions.from = SENDER_EMAIL;
+        }
+
+        // 寄送郵件
+        GmailApp.sendEmail(email, EMAIL_SUBJECT, "", emailOptions);
+        
+        // 標記為已寄出 (寫回試算表)
+        sheet.getRange(i + 2, COL_STATUS).setValue("Sent");
+        console.log("已寄信給：" + email);
+        
+      } catch (e) {
+        console.log("寄信失敗：" + email + ", 原因：" + e);
+        sheet.getRange(i + 2, COL_STATUS).setValue("Failed");
+      }
+    }
+  }
+}
